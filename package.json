@@ -2,6 +2,7 @@
   "name": "SoundSelf",
   "productName": "SoundSelf",
   "description": "SoundSelf Launcher Application",
+  "version": "0.0.0",
   "keywords": [
     "electron",
     "boilerplate",
@@ -176,7 +177,7 @@
     "webpack-merge": "^6.0.1"
   },
   "build": {
-     "appId": "com.hummingbird.soundself",
+    "appId": "com.hummingbird.soundself",
     "productName": "SoundSelf",
     "asar": true,
     "afterSign": ".erb/scripts/notarize.js",
