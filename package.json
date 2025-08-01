@@ -200,7 +200,8 @@
       "hardenedRuntime": true,
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "icon": "./assets/icon.icns"
     },
     "dmg": {
       "contents": [
@@ -219,13 +220,15 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "./assets/icon.png"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Development",
+      "icon": "./assets/icon.png"
     },
     "directories": {
       "app": "release/app",

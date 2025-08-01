@@ -5,7 +5,7 @@ exports.default = async function notarizeMacos(context) {
   if (electronPlatformName !== 'darwin') {
     return;
   }
-  
+
   // Dynamic import for @electron/notarize
   const { notarize } = await import('@electron/notarize');
 

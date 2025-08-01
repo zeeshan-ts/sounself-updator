@@ -74,6 +74,7 @@ const createWindow = async () => {
     height: 300,
     resizable: false,
     icon: getAssetPath('icon.png'),
+    autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
@@ -82,6 +83,9 @@ const createWindow = async () => {
   });
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
+
+  // Set application menu to null (removes the menu bar)
+  mainWindow.setMenu(null);
 
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
