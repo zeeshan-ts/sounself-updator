@@ -219,9 +219,13 @@
     },
     "win": {
       "target": [
-        "nsis"
+        "portable"
       ],
       "icon": "./assets/icon.png"
+    },
+    "portable": {
+      "artifactName": "SoundSelf-Portable-${version}.exe",
+      "splashImage": "./assets/icon.png"
     },
     "linux": {
       "target": [
