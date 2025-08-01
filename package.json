@@ -104,8 +104,10 @@
   },
   "dependencies": {
     "@electron/notarize": "^3.0.0",
+    "axios": "^1.11.0",
     "electron-debug": "^4.1.0",
     "electron-log": "^5.3.2",
+    "electron-store": "^10.1.0",
     "electron-updater": "^6.3.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -242,11 +244,12 @@
     "extraResources": [
       "./assets/**"
     ],
-    "publish": {
-      "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate"
-    }
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://hblpublicstoragestg.blob.core.windows.net/software-releases/v0.0.0/win/"
+      }
+    ]
   },
   "collective": {
     "url": "https://opencollective.com/electron-react-boilerplate-594"
