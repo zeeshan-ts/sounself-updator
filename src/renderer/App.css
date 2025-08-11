@@ -2,6 +2,12 @@
  * @NOTE: Prepend a `~` to css file paths that are in your node_modules
  *        See https://github.com/webpack-contrib/sass-loader#imports
  */
+:root {
+  --primary-color: #66C4A8;
+  --secondary-color: #4A4A4A;
+  --light-color: #ffffff;
+  --background-color: rgba(4, 6, 0, 0.4);
+}
 
 body {
   box-sizing: border-box;
@@ -22,4 +28,36 @@ body {
 #root {
   height: calc(100vh - 2px);
   width: calc(100vw - 2px);
+}
+
+
+.button {
+  border: none;
+  cursor: pointer;
+  border-radius: 0.34rem;
+  transition: background-color 0.3s ease;
+}
+
+.button-primary {
+  background: rgba(81, 106, 120, 0.8);
+  border: 1px solid rgba(81, 106, 120, 0.8);
+  color: white;
+}
+
+.button-light-outline {
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+}
+
+.button-primary:hover {
+  background: rgba(81, 106, 120, 1);
+}
+
+.button-secondary:hover {
+  background: #cccbcb;
+}
+
+.button-lg {
+  padding: 0.5rem 1.2rem;
 }

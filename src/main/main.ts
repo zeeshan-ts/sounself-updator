@@ -13,6 +13,8 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { resolveHtmlPath } from './util';
+import { checkInternetConnectivity } from './utils/internetConnectivity';
+import { IPC_METHODS, OperatingSystems } from './constants';
 
 class AppUpdater {
   constructor() {
@@ -23,6 +25,7 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let hasWifiCached = false;
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -86,6 +89,26 @@ const createWindow = async () => {
 
   // Set application menu to null (removes the menu bar)
   mainWindow.setMenu(null);
+  ipcMain.handle(IPC_METHODS.hasInternetConnection, async () => {
+    const isInternetConnected = await checkInternetConnectivity();
+    return {
+      data: isInternetConnected,
+      success: true,
+    };
+  });
+
+  ipcMain.handle(IPC_METHODS.openNetworkSettings, async () => {
+    if (process.platform === OperatingSystems.WINDOWS) {
+      const uri = hasWifiCached
+        ? 'ms-settings:network-wifi'
+        : 'ms-settings:network';
+      shell.openExternal(uri);
+    } else if (process.platform === OperatingSystems.MACOS) {
+      shell.openExternal(
+        'x-apple.systempreferences:com.apple.preference.network',
+      );
+    }
+  });
 
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
