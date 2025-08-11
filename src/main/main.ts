@@ -13,11 +13,10 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import os from 'os';
-import fs from 'fs';
 import { applySubstitutions, resolveHtmlPath } from './util';
 import { checkHummingbirdUpdates } from './apis';
 import { LoggingMessage } from './constants';
-import { saveDownloadProgress, saveUpdateInfo } from './Store';
+import { saveDownloadProgress } from './Store';
 
 class AppUpdater {
   constructor() {
@@ -55,7 +54,7 @@ ipcMain.handle('downloadHummingbird', async (event, downloadLink) => {
     );
 
     // Configure the updater
-    autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.autoRunAppAfterInstall = true;
 
     // Log the current app version
@@ -68,12 +67,21 @@ ipcMain.handle('downloadHummingbird', async (event, downloadLink) => {
 
     autoUpdater.on('update-available', (info) => {
       log.info(`Update available: ${JSON.stringify(info)}`);
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send('update-status', {
+          available: true,
+          info,
+        });
+      });
     });
 
     autoUpdater.on('update-not-available', (info) => {
       log.info(`Update not available: ${JSON.stringify(info)}`);
       BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(`download-no-update`);
+        win.webContents.send('update-status', {
+          available: false,
+          info,
+        });
       });
     });
 
@@ -85,10 +93,10 @@ ipcMain.handle('downloadHummingbird', async (event, downloadLink) => {
         }),
       );
       BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(
-          `download-progress`,
-          Math.trunc(progressObj.percent),
-        );
+        win.webContents.send('download-progress', {
+          percent: progressObj?.percent,
+          isError: false,
+        });
       });
       saveDownloadProgress({ percent: progressObj?.percent, isError: false });
     });
@@ -96,51 +104,35 @@ ipcMain.handle('downloadHummingbird', async (event, downloadLink) => {
     autoUpdater.on('update-downloaded', (info) => {
       log.info(`Update downloaded: ${JSON.stringify(info)}`);
 
-      // Store update info with additional metadata for tracking
-      const updateInfo = {
-        version: info.version,
-        downloadedAt: new Date().toISOString(),
-        downloadLink,
-        installAttempts: 0,
-        releaseNotes: info.releaseNotes || '',
-      };
-
-      // Make sure directory exists
-      const updateFilePath = path.join(
-        app.getPath('userData'),
-        'update-pending.json',
-      );
-      try {
-        fs.writeFileSync(updateFilePath, JSON.stringify(updateInfo));
-        log.info(`Update information saved to ${updateFilePath}`);
-        saveUpdateInfo(updateInfo);
-      } catch (err) {
-        if (err instanceof Error) {
-          log.error(`Failed to save update information: ${err.message}`);
-        } else {
-          log.error(
-            `Failed to save update information: ${JSON.stringify(err)}`,
-          );
-        }
-      }
-
       BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(`download-finish`);
+        win.webContents.send('download-progress', {
+          percent: 100,
+          isError: false,
+          updateReady: true,
+        });
       });
       saveDownloadProgress({ percent: 100, isError: false });
+
+      // Schedule the update installation after a short delay
+      setTimeout(() => {
+        autoUpdater.quitAndInstall(false, true);
+      }, 3000);
     });
 
     autoUpdater.on('error', (error) => {
-      log.info(
-        applySubstitutions(LoggingMessage.AUTO_UPDATE_ERROR, {
+      log.error(
+        applySubstitutions(LoggingMessage.DOWNLOADING_ERROR, {
           error: error.toString(),
-          stack: error.stack || 'No stack trace',
         }),
       );
       BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(`download-error`, error.message);
+        win.webContents.send('download-progress', {
+          percent: 0,
+          isError: true,
+          error: error.toString(),
+        });
       });
-      saveDownloadProgress({ percent: 0, isError: true });
+      saveDownloadProgress({ isError: true, error: error.toString() });
     });
     autoUpdater.setFeedURL({
       provider: 'generic',
