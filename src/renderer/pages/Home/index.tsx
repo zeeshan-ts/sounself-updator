@@ -1,5 +1,5 @@
 import './index.css';
-import FullLogo from '../../assets/logoYellow.png';
+import FullLogo from '../../assets/soundSelfFullLogo.png';
 
 export function Home() {
   return (
