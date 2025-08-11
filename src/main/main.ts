@@ -71,7 +71,7 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     show: false,
     width: 900,
-    height: 300,
+    height: 500,
     resizable: false,
     icon: getAssetPath('icon.png'),
     autoHideMenuBar: true, // Hide the menu bar
