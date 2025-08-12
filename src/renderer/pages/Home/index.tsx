@@ -62,7 +62,7 @@ export function Home() {
           isError: boolean;
           updateReady: boolean;
         };
-        setDownloadProgress(response.percent);
+        setDownloadProgress(Math.trunc(response.percent));
         if (response?.percent === 100) {
           setTimeout(() => {
             setCurrentProcess(Processes.Installing);
