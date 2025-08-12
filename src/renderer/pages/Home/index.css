@@ -35,6 +35,7 @@
       color: var(--light-color);
       font-size: 0.9rem;
       margin-top: 30px;
+      text-align: center;
     }
 
     .no-internet-image {

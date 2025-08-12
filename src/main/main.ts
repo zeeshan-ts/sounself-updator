@@ -23,10 +23,17 @@ import { autoUpdater } from 'electron-updater';
 import { logger as log } from './utils/logger';
 import { resolveHtmlPath } from './util';
 import { checkInternetConnectivity } from './utils/internetConnectivity';
-import { IPC_METHODS, LoggingMessage, OperatingSystems } from './constants';
+import {
+  applySubstitutions,
+  IPC_METHODS,
+  LoggingMessage,
+  OperatingSystems,
+  CHANNELS,
+} from './constants';
 import { checkHummingbirdUpdates } from './apis';
 import os from 'os';
 import { logger } from './utils/logger';
+import { saveDownloadProgress } from './store';
 
 class AppUpdater {
   constructor() {
@@ -138,6 +145,139 @@ const createWindow = async () => {
     return response;
   });
 
+  ipcMain.handle(
+    IPC_METHODS.downloadUpdates,
+    async (event: IpcMainInvokeEvent, downloadLink: string) => {
+      try {
+        // Clear any existing listeners to prevent duplicates
+        autoUpdater.removeAllListeners();
+
+        log.info(
+          applySubstitutions(LoggingMessage.DOWNLOADING_REQUEST, {
+            url: downloadLink,
+          }),
+        );
+
+        // Configure the updater
+        autoUpdater.autoInstallOnAppQuit = true;
+        autoUpdater.autoRunAppAfterInstall = true;
+
+        // Log the current app version
+        log.info(`Current app version: ${app.getVersion()}`);
+
+        // Set up event listeners
+        autoUpdater.on('checking-for-update', () => {
+          log.info('Checking for update...');
+        });
+
+        autoUpdater.on('update-available', (info) => {
+          log.info(`Update available: ${JSON.stringify(info)}`);
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send(CHANNELS.updateStatus, {
+              available: true,
+              info,
+            });
+          });
+        });
+
+        autoUpdater.on('update-not-available', (info) => {
+          log.info(`Update not available: ${JSON.stringify(info)}`);
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send(CHANNELS.updateStatus, {
+              available: false,
+              info,
+            });
+          });
+        });
+
+        autoUpdater.on('download-progress', (progressObj) => {
+          log.info(
+            applySubstitutions(LoggingMessage.DOWNLOADING_PROGRESS, {
+              percent: String(progressObj?.percent),
+              obj: JSON.stringify(progressObj),
+            }),
+          );
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send(CHANNELS.downloadProgress, {
+              percent: progressObj?.percent,
+              isError: false,
+            });
+          });
+          saveDownloadProgress({
+            percent: progressObj?.percent,
+            isError: false,
+          });
+        });
+
+        autoUpdater.on('update-downloaded', (info) => {
+          log.info(`Update downloaded: ${JSON.stringify(info)}`);
+
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send(CHANNELS.downloadProgress, {
+              percent: 100,
+              isError: false,
+              updateReady: true,
+            });
+          });
+          saveDownloadProgress({ percent: 100, isError: false });
+
+          // Schedule the update installation after a short delay
+          setTimeout(() => {
+            try {
+              logger.info('Installing update silently...');
+              autoUpdater.quitAndInstall(true, true);
+            } catch (error) {
+              logger.error(`Failed to quit and install: ${error}`);
+            }
+          }, 3000);
+        });
+
+        autoUpdater.on('error', (error) => {
+          log.error(
+            applySubstitutions(LoggingMessage.DOWNLOADING_ERROR, {
+              error: error.toString(),
+            }),
+          );
+          BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send(CHANNELS.downloadProgress, {
+              percent: 0,
+              isError: true,
+              error: error.toString(),
+            });
+          });
+          saveDownloadProgress({ isError: true, error: error.toString() });
+        });
+
+        autoUpdater.setFeedURL({
+          provider: 'generic',
+          url: downloadLink,
+        });
+
+        try {
+          log.info('Calling checkForUpdates()...');
+          const result = await autoUpdater.checkForUpdates();
+          log.info(
+            `checkForUpdates returned: ${result ? JSON.stringify(result) : 'undefined'}`,
+          );
+          return true;
+        } catch (err) {
+          log.error(
+            `Error in checkForUpdates: ${
+              err instanceof Error ? err.toString() : JSON.stringify(err)
+            }`,
+          );
+          return false;
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          log.error(`Error in downloadHummingbird: ${error.toString()}`);
+        } else {
+          log.error(`Error in downloadHummingbird: ${JSON.stringify(error)}`);
+        }
+        return false;
+      }
+    },
+  );
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');

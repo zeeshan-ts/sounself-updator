@@ -45,3 +45,10 @@ export const checkUpdates = async () => {
     'checkUpdates',
   );
 };
+
+export const downloadUpdates = async (downloadLink: string) => {
+  return window.electron.invokeMainProcessMethod(
+    'downloadUpdates',
+    downloadLink,
+  );
+};

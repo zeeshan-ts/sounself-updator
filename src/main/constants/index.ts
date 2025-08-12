@@ -3,10 +3,22 @@ export const IPC_METHODS = {
   openNetworkSettings: 'openNetworkSettings',
   logger: 'logger',
   checkUpdates: 'checkUpdates',
+  downloadUpdates: 'downloadUpdates',
 } as const;
+
+export const CHANNELS = {
+  downloadProgress: 'download-progress',
+  updateStatus: 'update-status',
+} as const;
+
 export const OperatingSystems = Object.freeze({
   WINDOWS: 'win32',
   MACOS: 'darwin',
+});
+
+export const StorageKeys = Object.freeze({
+  DOWNLOAD_PROGRESS: 'download_progress',
+  UPDATE_INFO: 'updateInfo',
 });
 
 export const applySubstitutions = (
@@ -28,4 +40,9 @@ export const LoggingMessage = Object.freeze({
     'Error checking internet connection., Error: {{error}}',
   CHECK_FOR_UPDATES: 'Checking for updates...',
   ERROR_CHECKING_UPDATES: 'Error checking for updates., Error: {{error}}',
+  DOWNLOADING_REQUEST: 'Downloading request. URL = {{url}}',
+  DOWNLOADING_PROGRESS:
+    'Downloading progress. Percent = {{percent}} and progressObj = {{obj}}',
+  DOWNLOADING_ERROR:
+    'Something went wrong while downloading software. Error={{error}}',
 });

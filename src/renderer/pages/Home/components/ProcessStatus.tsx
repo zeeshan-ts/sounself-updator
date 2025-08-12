@@ -8,17 +8,37 @@ import { openNetworkSettings } from '../../../services';
 interface ProcessStatusProps {
   status: Processes;
   onRetry?: () => void;
+  downloadProgress?: number;
 }
 
-export function ProcessStatus({ status, onRetry }: ProcessStatusProps) {
+export function ProcessStatus({
+  status,
+  onRetry,
+  downloadProgress = 0,
+}: ProcessStatusProps) {
   if (
     status === Processes.CheckingInternet ||
-    status === Processes.CheckingUpdates
+    status === Processes.CheckingUpdates ||
+    status === Processes.LastVersion ||
+    status === Processes.Installing
   ) {
     return (
       <>
         <Loader />
         <div className="process-status">{MESSAGES?.[status]}</div>
+      </>
+    );
+  }
+  if (status === Processes.Downloading) {
+    return (
+      <>
+        <Loader />
+        <div className="process-status">
+          {MESSAGES?.[status]?.replace('{{PROGRESS}}', `${downloadProgress}`)}
+          <br />
+          Please keep your computer on and do not close the application until
+          the process is complete.
+        </div>
       </>
     );
   }
