@@ -2,7 +2,7 @@ import './index.css';
 import { useEffect, useState } from 'react';
 import FullLogo from '../../assets/soundSelfFullLogo.png';
 import { Processes } from './interfaces';
-import { hasInternetConnection } from '../../services';
+import { checkUpdates, hasInternetConnection, logger } from '../../services';
 import { ProcessStatus } from './components/ProcessStatus';
 
 export function Home() {
@@ -11,22 +11,38 @@ export function Home() {
   );
 
   const checkWifiConnection = async () => {
+    logger.info('Checking internet connection...');
     setCurrentProcess(Processes.CheckingInternet);
     const isInternetConnected = await hasInternetConnection();
     if (isInternetConnected) {
+      logger.info('Internet connected.');
       return true;
     }
+    logger.info('Internet connection failed.');
     setCurrentProcess(Processes.NoInternet);
     return false;
   };
 
+  const checkForUpdates = async () => {
+    setCurrentProcess(Processes.CheckingUpdates);
+    const updates = await checkUpdates();
+    if (updates.data) {
+      logger.info(`Update available = ${JSON.stringify(updates.data)}`);
+    } else {
+      logger.info('No updates available.');
+    }
+  };
+
   const initiateProcess = async () => {
-    checkWifiConnection();
+    const isWifiConnected = await checkWifiConnection();
+    if (isWifiConnected) {
+      await checkForUpdates();
+    }
   };
 
   useEffect(() => {
     initiateProcess();
-  }, [currentProcess]);
+  }, []);
 
   return (
     <div className="home-container">

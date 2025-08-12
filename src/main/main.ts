@@ -8,13 +8,25 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
+require('dotenv').config({
+  path: require('path').join(__dirname, '../../.env'),
+});
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  shell,
+  ipcMain,
+  IpcMainInvokeEvent,
+} from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { logger as log } from './utils/logger';
 import { resolveHtmlPath } from './util';
 import { checkInternetConnectivity } from './utils/internetConnectivity';
-import { IPC_METHODS, OperatingSystems } from './constants';
+import { IPC_METHODS, LoggingMessage, OperatingSystems } from './constants';
+import { checkHummingbirdUpdates } from './apis';
+import os from 'os';
+import { logger } from './utils/logger';
 
 class AppUpdater {
   constructor() {
@@ -101,6 +113,29 @@ const createWindow = async () => {
         'x-apple.systempreferences:com.apple.preference.network',
       );
     }
+  });
+
+  ipcMain.handle(
+    IPC_METHODS.logger,
+    async (
+      event: IpcMainInvokeEvent,
+      { type = 'info', message }: { type?: 'info' | 'error'; message: string },
+    ) => {
+      if (type === 'info') {
+        log.info(message);
+      } else if (type === 'error') {
+        log.error(message);
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_METHODS.checkUpdates, async () => {
+    logger.info(LoggingMessage.CHECK_FOR_UPDATES);
+    const response = await checkHummingbirdUpdates({
+      operatingSystem: os.platform(),
+      currentVersion: app.getVersion(),
+    });
+    return response;
   });
 
   mainWindow.on('ready-to-show', () => {

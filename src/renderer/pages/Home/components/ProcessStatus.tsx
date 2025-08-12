@@ -1,8 +1,8 @@
 import { MESSAGES } from '../constants';
 import { Processes } from '../interfaces';
-import Loader from './Loader';
+import { Loader } from './Loader';
 import NoInternet from '../../../assets/noWifi.png';
-import Button from './Button';
+import { Button } from './Button';
 import { openNetworkSettings } from '../../../services';
 
 interface ProcessStatusProps {
@@ -11,7 +11,10 @@ interface ProcessStatusProps {
 }
 
 export function ProcessStatus({ status, onRetry }: ProcessStatusProps) {
-  if (status === Processes.CheckingInternet) {
+  if (
+    status === Processes.CheckingInternet ||
+    status === Processes.CheckingUpdates
+  ) {
     return (
       <>
         <Loader />
@@ -39,6 +42,7 @@ export function ProcessStatus({ status, onRetry }: ProcessStatusProps) {
       </>
     );
   }
+
   return null;
 }
 

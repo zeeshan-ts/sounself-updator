@@ -2,6 +2,7 @@ import { Processes } from '../interfaces';
 
 export const MESSAGES: { [key in Processes]: string } = {
   [Processes.CheckingInternet]: 'Checking Internet Connection...',
+  [Processes.CheckingUpdates]: 'Checking the latest version...',
   [Processes.RetryInternet]: 'Retrying Internet Connection...',
   [Processes.LastVersion]: 'Checking for the latest version...',
   [Processes.Downloading]: 'Downloading update...',

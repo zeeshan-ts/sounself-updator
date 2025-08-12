@@ -1,4 +1,4 @@
-import { LoggingMessage } from '../constants';
+import { applySubstitutions, LoggingMessage } from '../constants';
 import { logger } from './logger';
 
 export async function checkInternetConnectivity() {
@@ -7,7 +7,11 @@ export async function checkInternetConnectivity() {
     const online = await isOnlineModule.default();
     return online;
   } catch (error) {
-    logger.info(LoggingMessage.INTERNET_DISCONNECT);
+    logger.info(
+      applySubstitutions(LoggingMessage.ERROR_CHECKING_INTERNET, {
+        error,
+      }),
+    );
     return false;
   }
 }

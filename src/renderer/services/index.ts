@@ -1,3 +1,5 @@
+import { HummingbirdUpdateResponse } from '../../main/apis/types';
+
 export const hasInternetConnection = async () => {
   try {
     const isInternetConnected =
@@ -23,4 +25,23 @@ export const openNetworkSettings = async () => {
   } catch (error) {
     return false;
   }
+};
+
+export const logger = {
+  info: (message: string) =>
+    window.electron.invokeMainProcessMethod('logger', {
+      type: 'info',
+      message,
+    }),
+  error: (message: string) =>
+    window.electron.invokeMainProcessMethod('logger', {
+      type: 'error',
+      message,
+    }),
+};
+
+export const checkUpdates = async () => {
+  return window.electron.invokeMainProcessMethod<HummingbirdUpdateResponse>(
+    'checkUpdates',
+  );
 };
