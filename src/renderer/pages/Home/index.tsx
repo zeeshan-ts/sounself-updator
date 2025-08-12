@@ -36,7 +36,7 @@ export function Home() {
     if (updates.data) {
       logger.info(`Update available = ${JSON.stringify(updates.data)}`);
       setCurrentProcess(Processes.LastVersion);
-      await downloadUpdates(updates.data.downloadLink);
+      await downloadUpdates(updates.data.buildLink);
       setTimeout(() => {
         setCurrentProcess(Processes.Downloading);
       }, 1000);

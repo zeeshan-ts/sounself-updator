@@ -8,9 +8,6 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
-require('dotenv').config({
-  path: require('path').join(__dirname, '../../.env'),
-});
 import path from 'path';
 import {
   app,
@@ -148,6 +145,7 @@ const createWindow = async () => {
   ipcMain.handle(
     IPC_METHODS.downloadUpdates,
     async (event: IpcMainInvokeEvent, downloadLink: string) => {
+      if (!downloadLink) return;
       try {
         // Clear any existing listeners to prevent duplicates
         autoUpdater.removeAllListeners();
@@ -188,6 +186,11 @@ const createWindow = async () => {
               info,
             });
           });
+        });
+
+        autoUpdater.on('error', (error: Error, message?: string) => {
+          log.error(`Autoupdator error= ${error.toString()}`);
+          log.error(`Autoupdator error message= ${message}`);
         });
 
         autoUpdater.on('download-progress', (progressObj) => {
