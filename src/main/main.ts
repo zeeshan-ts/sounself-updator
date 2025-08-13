@@ -31,6 +31,7 @@ import { checkHummingbirdUpdates } from './apis';
 import os from 'os';
 import { logger } from './utils/logger';
 import { saveDownloadProgress } from './store';
+import { NetworkRecoveryManager } from './utils/updates';
 
 class AppUpdater {
   constructor() {
@@ -41,6 +42,7 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 let hasWifiCached = false;
+const networkRecovery = new NetworkRecoveryManager();
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -146,141 +148,203 @@ const createWindow = async () => {
     IPC_METHODS.downloadUpdates,
     async (event: IpcMainInvokeEvent, downloadLink: string) => {
       if (!downloadLink) return;
-      try {
-        // Clear any existing listeners to prevent duplicates
-        autoUpdater.removeAllListeners();
 
-        log.info(
-          applySubstitutions(LoggingMessage.DOWNLOADING_REQUEST, {
-            url: downloadLink,
-          }),
-        );
+      // Reset network recovery manager for new download
+      networkRecovery.reset();
 
-        // Configure the updater
-        autoUpdater.autoInstallOnAppQuit = true;
-        autoUpdater.autoRunAppAfterInstall = true;
+      const startDownload = async () => {
+        try {
+          // Clear any existing listeners to prevent duplicates
+          autoUpdater.removeAllListeners();
 
-        // Log the current app version
-        log.info(`Current app version: ${app.getVersion()}`);
-
-        // Set up event listeners
-        autoUpdater.on('checking-for-update', () => {
-          log.info('Checking for update...');
-        });
-
-        autoUpdater.on('update-available', (info) => {
-          log.info(`Update available: ${JSON.stringify(info)}`);
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send(CHANNELS.updateStatus, {
-              available: true,
-              info,
-            });
-          });
-        });
-
-        autoUpdater.on('update-not-available', (info) => {
-          log.info(`Update not available: ${JSON.stringify(info)}`);
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send(CHANNELS.updateStatus, {
-              available: false,
-              info,
-            });
-          });
-        });
-
-        autoUpdater.on('error', (error: Error, message?: string) => {
-          log.error(`Autoupdator error= ${error.toString()}`);
-          log.error(`Autoupdator error message= ${message}`);
-        });
-
-        autoUpdater.on('download-progress', (progressObj) => {
           log.info(
-            applySubstitutions(LoggingMessage.DOWNLOADING_PROGRESS, {
-              percent: String(progressObj?.percent),
-              obj: JSON.stringify(progressObj),
+            applySubstitutions(LoggingMessage.DOWNLOADING_REQUEST, {
+              url: downloadLink,
             }),
           );
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send(CHANNELS.downloadProgress, {
+
+          // Configure the updater
+          autoUpdater.autoInstallOnAppQuit = true;
+          autoUpdater.autoRunAppAfterInstall = true;
+
+          // Log the current app version
+          log.info(`Current app version: ${app.getVersion()}`);
+
+          // Set up network recovery callback
+          networkRecovery.setDownloadParams(downloadLink, startDownload);
+
+          // Set up event listeners
+          autoUpdater.on('checking-for-update', () => {
+            log.info('Checking for update...');
+          });
+
+          autoUpdater.on('update-available', (info) => {
+            log.info(`Update available: ${JSON.stringify(info)}`);
+            networkRecovery.setDownloadingState(true);
+            BrowserWindow.getAllWindows().forEach((win) => {
+              win.webContents.send(CHANNELS.updateStatus, {
+                available: true,
+                info,
+              });
+            });
+          });
+
+          autoUpdater.on('update-not-available', (info) => {
+            log.info(`Update not available: ${JSON.stringify(info)}`);
+            networkRecovery.setDownloadingState(false);
+            BrowserWindow.getAllWindows().forEach((win) => {
+              win.webContents.send(CHANNELS.updateStatus, {
+                available: false,
+                info,
+              });
+            });
+          });
+
+          autoUpdater.on('download-progress', (progressObj) => {
+            log.info(
+              applySubstitutions(LoggingMessage.DOWNLOADING_PROGRESS, {
+                percent: String(progressObj?.percent),
+                obj: JSON.stringify(progressObj),
+              }),
+            );
+            BrowserWindow.getAllWindows().forEach((win) => {
+              win.webContents.send(CHANNELS.downloadProgress, {
+                percent: progressObj?.percent,
+                isError: false,
+              });
+            });
+            saveDownloadProgress({
               percent: progressObj?.percent,
               isError: false,
             });
           });
-          saveDownloadProgress({
-            percent: progressObj?.percent,
-            isError: false,
-          });
-        });
 
-        autoUpdater.on('update-downloaded', (info) => {
-          log.info(`Update downloaded: ${JSON.stringify(info)}`);
+          autoUpdater.on('update-downloaded', (info) => {
+            log.info(`Update downloaded: ${JSON.stringify(info)}`);
+            networkRecovery.setDownloadingState(false);
+            networkRecovery.reset(); // Clear any retry logic
 
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send(CHANNELS.downloadProgress, {
-              percent: 100,
-              isError: false,
-              updateReady: true,
+            BrowserWindow.getAllWindows().forEach((win) => {
+              win.webContents.send(CHANNELS.downloadProgress, {
+                percent: 100,
+                isError: false,
+                updateReady: true,
+              });
             });
-          });
-          saveDownloadProgress({ percent: 100, isError: false });
+            saveDownloadProgress({ percent: 100, isError: false });
 
-          // Schedule the update installation after a short delay
-          setTimeout(() => {
-            try {
-              logger.info('Installing update silently...');
-              autoUpdater.quitAndInstall(true, true);
-            } catch (error) {
-              logger.error(`Failed to quit and install: ${error}`);
+            // Schedule the update installation after a short delay
+            setTimeout(() => {
+              try {
+                log.info('Installing update silently...');
+                autoUpdater.quitAndInstall(true, true);
+              } catch (error) {
+                log.error(`Failed to quit and install: ${error}`);
+              }
+            }, 3000);
+          });
+
+          autoUpdater.on('error', (error) => {
+            log.error(
+              applySubstitutions(LoggingMessage.DOWNLOADING_ERROR, {
+                error: error.toString(),
+              }),
+            );
+
+            networkRecovery.setDownloadingState(false);
+
+            // Check if it's a network error and handle accordingly
+            if (networkRecovery.isNetworkError(error)) {
+              log.info(
+                'Network error detected during download. Starting continuous monitoring...',
+              );
+
+              // Notify renderer about network issue and monitoring
+              BrowserWindow.getAllWindows().forEach((win) => {
+                win.webContents.send(CHANNELS.downloadProgress, {
+                  percent: 0,
+                  isError: true,
+                  error:
+                    'Network connection lost. Monitoring for reconnection...',
+                  isNetworkError: true,
+                  isMonitoring: true,
+                });
+              });
+
+              // Start continuous network recovery process
+              networkRecovery.startNetworkRecovery();
+            } else {
+              // Handle non-network errors normally
+              BrowserWindow.getAllWindows().forEach((win) => {
+                win.webContents.send(CHANNELS.downloadProgress, {
+                  percent: 0,
+                  isError: true,
+                  error: error.toString(),
+                });
+              });
+              saveDownloadProgress({ isError: true, error: error.toString() });
+              networkRecovery.cleanup();
             }
-          }, 3000);
-        });
-
-        autoUpdater.on('error', (error) => {
-          log.error(
-            applySubstitutions(LoggingMessage.DOWNLOADING_ERROR, {
-              error: error.toString(),
-            }),
-          );
-          BrowserWindow.getAllWindows().forEach((win) => {
-            win.webContents.send(CHANNELS.downloadProgress, {
-              percent: 0,
-              isError: true,
-              error: error.toString(),
-            });
           });
-          saveDownloadProgress({ isError: true, error: error.toString() });
-        });
 
-        autoUpdater.setFeedURL({
-          provider: 'generic',
-          url: downloadLink,
-        });
+          autoUpdater.setFeedURL({
+            provider: 'generic',
+            url: downloadLink,
+          });
 
-        try {
-          log.info('Calling checkForUpdates()...');
-          const result = await autoUpdater.checkForUpdates();
-          log.info(
-            `checkForUpdates returned: ${result ? JSON.stringify(result) : 'undefined'}`,
-          );
-          return true;
-        } catch (err) {
-          log.error(
-            `Error in checkForUpdates: ${
-              err instanceof Error ? err.toString() : JSON.stringify(err)
-            }`,
-          );
+          try {
+            log.info('Calling checkForUpdates()...');
+            const result = await autoUpdater.checkForUpdates();
+            log.info(
+              `checkForUpdates returned: ${result ? JSON.stringify(result) : 'undefined'}`,
+            );
+            return true;
+          } catch (err) {
+            log.error(
+              `Error in checkForUpdates: ${
+                err instanceof Error ? err.toString() : JSON.stringify(err)
+              }`,
+            );
+            networkRecovery.cleanup();
+            return false;
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            log.error(`Error in downloadUpdates: ${error.toString()}`);
+          } else {
+            log.error(`Error in downloadUpdates: ${JSON.stringify(error)}`);
+          }
+          networkRecovery.cleanup();
           return false;
         }
-      } catch (error) {
-        if (error instanceof Error) {
-          log.error(`Error in downloadHummingbird: ${error.toString()}`);
-        } else {
-          log.error(`Error in downloadHummingbird: ${JSON.stringify(error)}`);
-        }
-        return false;
-      }
+      };
+
+      // Start the initial download
+      return await startDownload();
     },
   );
+
+  // Add a method to manually stop monitoring (useful for user cancellation)
+  ipcMain.handle(
+    IPC_METHODS.cancelNetworkMonitoring,
+    async (event: IpcMainInvokeEvent) => {
+      log.info('Network monitoring cancelled by user');
+      networkRecovery.cleanup();
+
+      // Notify renderer that monitoring is stopped
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(CHANNELS.downloadProgress, {
+          percent: 0,
+          isError: true,
+          error: 'Download cancelled by user.',
+          isCancelled: true,
+        });
+      });
+
+      return true;
+    },
+  );
+
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
@@ -292,6 +356,19 @@ const createWindow = async () => {
     }
   });
 
+  // Add a manual retry handler for the renderer process
+  ipcMain.handle(
+    IPC_METHODS.retryDownloadUpdates,
+    async (event: IpcMainInvokeEvent) => {
+      log.info('Manual retry requested from renderer');
+      networkRecovery.reset(); // Reset retry count for manual retry
+
+      // You'll need to store the downloadLink somewhere accessible or pass it again
+      // For now, assuming you have a way to get the current download link
+      // Return success/failure status
+      return true;
+    },
+  );
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -310,6 +387,10 @@ const createWindow = async () => {
 /**
  * Add event listeners...
  */
+app.on('before-quit', () => {
+  log.info('Cleaning up network resources...');
+  networkRecovery.cleanup();
+});
 
 app.on('window-all-closed', () => {
   // Respect the OSX convention of having the application in memory even

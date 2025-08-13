@@ -4,6 +4,8 @@ export const IPC_METHODS = {
   logger: 'logger',
   checkUpdates: 'checkUpdates',
   downloadUpdates: 'downloadUpdates',
+  retryDownloadUpdates: 'retryDownloadUpdates',
+  cancelNetworkMonitoring: 'cancelNetworkMonitoring',
 } as const;
 
 export const CHANNELS = {
