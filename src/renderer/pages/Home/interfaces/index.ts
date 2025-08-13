@@ -7,4 +7,5 @@ export enum Processes {
   Downloaded = 'downloaded',
   Installing = 'installing',
   NoInternet = 'noInternet',
+  Error = 'error',
 }

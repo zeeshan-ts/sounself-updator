@@ -11,4 +11,5 @@ export const MESSAGES: { [key in Processes]: string } = {
   [Processes.Installing]: 'Installing...',
   [Processes.NoInternet]:
     'No network connection. Connect to Wi-Fi and try again.',
+  [Processes.Error]: '{{ERROR}}. Please try again...',
 };

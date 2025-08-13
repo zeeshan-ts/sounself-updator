@@ -16,6 +16,7 @@ export function Home() {
   );
   const [isNetworkError, setIsNetworkError] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [errMsg, setErrMsg] = useState<string>('');
 
   const checkWifiConnection = async () => {
     logger.info('Checking internet connection...');
@@ -62,6 +63,7 @@ export function Home() {
           isError: boolean;
           updateReady: boolean;
           isNetworkError?: boolean;
+          error?: string;
         };
         setDownloadProgress(Math.trunc(response.percent));
         if (response?.percent === 100) {
@@ -71,6 +73,10 @@ export function Home() {
           }, 400);
         } else if (response?.isError && response?.isNetworkError) {
           setIsNetworkError(true);
+        } else if (response?.isError) {
+          setIsNetworkError(false);
+          setCurrentProcess(Processes.Error);
+          setErrMsg(response?.error || 'An error occurred');
         } else {
           setIsNetworkError(false);
         }
@@ -89,6 +95,8 @@ export function Home() {
           onRetry={checkWifiConnection}
           downloadProgress={downloadProgress}
           isNetworkError={isNetworkError}
+          errorMessage={errMsg}
+          onRetryError={initiateProcess}
         />
       </div>
     </div>
