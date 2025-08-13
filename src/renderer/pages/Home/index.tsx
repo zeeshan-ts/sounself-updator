@@ -14,7 +14,7 @@ export function Home() {
   const [currentProcess, setCurrentProcess] = useState<Processes>(
     Processes.CheckingInternet,
   );
-
+  const [isNetworkError, setIsNetworkError] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   const checkWifiConnection = async () => {
@@ -61,12 +61,18 @@ export function Home() {
           percent: number;
           isError: boolean;
           updateReady: boolean;
+          isNetworkError?: boolean;
         };
         setDownloadProgress(Math.trunc(response.percent));
         if (response?.percent === 100) {
+          setIsNetworkError(false);
           setTimeout(() => {
             setCurrentProcess(Processes.Installing);
           }, 400);
+        } else if (response?.isError && response?.isNetworkError) {
+          setIsNetworkError(true);
+        } else {
+          setIsNetworkError(false);
         }
       },
     );
@@ -82,6 +88,7 @@ export function Home() {
           status={currentProcess}
           onRetry={checkWifiConnection}
           downloadProgress={downloadProgress}
+          isNetworkError={isNetworkError}
         />
       </div>
     </div>

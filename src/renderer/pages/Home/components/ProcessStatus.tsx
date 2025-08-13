@@ -9,12 +9,14 @@ interface ProcessStatusProps {
   status: Processes;
   onRetry?: () => void;
   downloadProgress?: number;
+  isNetworkError?: boolean;
 }
 
 export function ProcessStatus({
   status,
   onRetry,
   downloadProgress = 0,
+  isNetworkError = false,
 }: ProcessStatusProps) {
   if (
     status === Processes.CheckingInternet ||
@@ -34,7 +36,12 @@ export function ProcessStatus({
       <>
         <Loader />
         <div className="process-status">
-          {MESSAGES?.[status]?.replace('{{PROGRESS}}', `${downloadProgress}`)}
+          {isNetworkError
+            ? 'Network connection lost. Monitoring for reconnection...'
+            : MESSAGES?.[status]?.replace(
+                '{{PROGRESS}}',
+                `${downloadProgress}`,
+              )}
           <br />
           Please keep your computer on and do not close the application until
           the process is complete.
