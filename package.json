@@ -214,6 +214,15 @@
       ],
       "icon": "./assets/icon.ico"
     },
+    "nsis": {
+      "perMachine": false,
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "allowToChangeInstallationDirectory": false,
+      "allowElevation": false
+    },
     "directories": {
       "app": "release/app",
       "buildResources": "assets",
